@@ -5,18 +5,20 @@ const globalForPrisma = globalThis;
 
 const createPrismaClient = () => {
   if (!process.env.DATABASE_URL) {
-    console.warn("DATABASE_URL is not configured.");
+    throw new Error("DATABASE_URL is not configured.");
   }
 
   const adapter = new PrismaPg({
-    connectionString: process.env.DATABASE_URL || "",
+    connectionString: process.env.DATABASE_URL,
   });
 
   return new PrismaClient({ adapter });
 };
 
-export const prisma = globalForPrisma.__adayPrisma || createPrismaClient();
+export const getPrisma = () => {
+  if (!globalForPrisma.__adayPrisma) {
+    globalForPrisma.__adayPrisma = createPrismaClient();
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.__adayPrisma = prisma;
-}
+  return globalForPrisma.__adayPrisma;
+};

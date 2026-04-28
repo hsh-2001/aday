@@ -1,5 +1,5 @@
 import { d as defineEventHandler } from '../nitro/nitro.mjs';
-import { p as prisma } from '../_/prisma.mjs';
+import { g as getPrisma } from '../_/prisma.mjs';
 import 'node:http';
 import 'node:https';
 import 'node:events';
@@ -12,6 +12,7 @@ import '@prisma/adapter-pg';
 
 const health_get = defineEventHandler(async () => {
   try {
+    const prisma = getPrisma();
     await prisma.$queryRaw`SELECT 1`;
     return {
       ok: true,
