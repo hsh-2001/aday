@@ -11,15 +11,43 @@
     </fieldset>
 
     <fieldset class="fieldset">
+      <legend class="fieldset-legend">Currency</legend>
+      <select v-model="form.currency" class="select w-full" required>
+        <option v-for="currency in currencies" :key="currency.code" :value="currency.code">
+          {{ currency.label }}
+        </option>
+      </select>
+    </fieldset>
+
+    <fieldset class="fieldset">
       <legend class="fieldset-legend">Category</legend>
       <input v-model.trim="form.category" class="input w-full" list="categories" required>
       <datalist id="categories">
-        <option value="Food" />
-        <option value="Transport" />
-        <option value="Coffee" />
-        <option value="Shopping" />
-        <option value="Bills" />
+        <option v-for="category in categories" :key="category" :value="category" />
       </datalist>
+    </fieldset>
+
+    <fieldset class="fieldset">
+      <legend class="fieldset-legend">Add category</legend>
+      <div class="join w-full">
+        <input
+          v-model.trim="categoryName"
+          class="input join-item min-w-0 flex-1"
+          maxlength="48"
+          placeholder="New category"
+          type="text"
+          @keydown.enter.prevent="$emit('addCategory')"
+        >
+        <button
+          class="btn btn-outline join-item"
+          :disabled="categoryLoading || !categoryName.trim()"
+          type="button"
+          @click="$emit('addCategory')"
+        >
+          <span v-if="categoryLoading" class="loading loading-spinner loading-xs" />
+          Add
+        </button>
+      </div>
     </fieldset>
 
     <fieldset class="fieldset">
@@ -44,16 +72,21 @@
 </template>
 
 <script setup lang="ts">
-import type { EntryForm } from '../types/api'
+import type { CurrencyOption, EntryForm } from '../types/api'
 
 defineProps<{
+  categories: string[]
+  categoryLoading: boolean
+  currencies: CurrencyOption[]
   error: string
   loading: boolean
 }>()
 
 defineEmits<{
+  addCategory: []
   submit: []
 }>()
 
+const categoryName = defineModel<string>('categoryName', { required: true })
 const form = defineModel<EntryForm>('form', { required: true })
 </script>

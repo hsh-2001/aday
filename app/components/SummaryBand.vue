@@ -6,9 +6,9 @@
     </fieldset>
 
     <div class="stats stats-vertical border border-base-300 shadow-none sm:stats-horizontal">
-      <div class="stat">
-        <div class="stat-title font-bold">Total spent</div>
-        <div class="stat-value text-primary">{{ formatCurrency(total) }}</div>
+      <div v-for="total in displayTotals" :key="total.currency" class="stat">
+        <div class="stat-title font-bold">Total spent {{ total.currency }}</div>
+        <div class="stat-value text-2xl text-primary sm:text-3xl">{{ formatCurrency(total.total, total.currency) }}</div>
       </div>
 
       <div class="stat">
@@ -20,11 +20,12 @@
 </template>
 
 <script setup lang="ts">
+import type { CurrencyTotal } from '../types/api'
 import { formatCurrency } from '../utils/formatters'
 
-defineProps<{
+const props = defineProps<{
   entryCount: number
-  total: number
+  totals: CurrencyTotal[]
 }>()
 
 defineEmits<{
@@ -32,4 +33,11 @@ defineEmits<{
 }>()
 
 const dateModel = defineModel<string>('selectedDate', { required: true })
+const displayTotals = computed(() => {
+  if (props.totals.length) {
+    return props.totals
+  }
+
+  return [{ currency: 'USD', total: 0 }]
+})
 </script>

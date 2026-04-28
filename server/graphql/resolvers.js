@@ -3,6 +3,9 @@ import { createToken, hashPassword, requireAuth, verifyPassword } from "../utils
 import { getDayRange, parseSpentAt, toCents } from "../utils/date.js";
 import { prisma } from "../utils/prisma.js";
 
+const DEFAULT_CATEGORIES = ["Food", "Transport", "Coffee", "Shopping", "Bills"];
+const SUPPORTED_CURRENCIES = new Set(["USD", "KHR", "THB", "EUR", "JPY", "CNY"]);
+
 const serializeUser = (user) => {
   if (!user) {
     return null;
@@ -19,10 +22,73 @@ const serializeMoneyEntry = (entry) => ({
   id: entry.id,
   amount: entry.amountCents / 100,
   category: entry.category,
+  currency: entry.currency || "USD",
   note: entry.note,
   spentAt: entry.spentAt.toISOString(),
   createdAt: entry.createdAt.toISOString(),
 });
+
+const normalizeCategory = (category) => {
+  const trimmedCategory = category.trim();
+
+  if (!trimmedCategory) {
+    throw new GraphQLError("Category is required.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  if (trimmedCategory.length > 48) {
+    throw new GraphQLError("Category must be 48 characters or fewer.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  return trimmedCategory;
+};
+
+const normalizeCurrency = (currency = "USD") => {
+  const normalizedCurrency = (currency || "USD").trim().toUpperCase();
+
+  if (!SUPPORTED_CURRENCIES.has(normalizedCurrency)) {
+    throw new GraphQLError("Unsupported currency.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  return normalizedCurrency;
+};
+
+const totalEntriesByCurrency = (entries) => {
+  const totals = entries.reduce((result, entry) => {
+    const currency = entry.currency || "USD";
+    result.set(currency, (result.get(currency) || 0) + entry.amountCents);
+
+    return result;
+  }, new Map());
+
+  return Array.from(totals.entries())
+    .sort(([leftCurrency], [rightCurrency]) => leftCurrency.localeCompare(rightCurrency))
+    .map(([currency, totalCents]) => ({
+      currency,
+      total: totalCents / 100,
+    }));
+};
+
+const upsertCategory = (userId, category) => {
+  return prisma.category.upsert({
+    where: {
+      userId_name: {
+        userId,
+        name: category,
+      },
+    },
+    update: {},
+    create: {
+      userId,
+      name: category,
+    },
+  });
+};
 
 const createAuthPayload = (user) => ({
   token: createToken(user),
@@ -101,6 +167,21 @@ export const rootValue = {
     return serializeUser(user);
   },
 
+  categories: async (_args, context) => {
+    const user = requireAuth(context);
+    const categories = await prisma.category.findMany({
+      where: { userId: user.id },
+      orderBy: { name: "asc" },
+    });
+    const categoryNames = new Set(DEFAULT_CATEGORIES);
+
+    categories.forEach((category) => {
+      categoryNames.add(category.name);
+    });
+
+    return Array.from(categoryNames);
+  },
+
   moneyEntries: async ({ date }, context) => {
     const user = requireAuth(context);
     const range = date ? getDayRange(date) : null;
@@ -142,6 +223,7 @@ export const rootValue = {
     return {
       date: range.date,
       total: totalCents / 100,
+      totals: totalEntriesByCurrency(entries),
       entries: entries.map(serializeMoneyEntry),
     };
   },
@@ -188,19 +270,47 @@ export const rootValue = {
     return serializeUser(user);
   },
 
-  createMoneyEntry: async ({ amount, category, note, spentAt }, context) => {
+  createMoneyEntry: async ({ amount, category, currency, note, spentAt }, context) => {
     const user = requireAuth(context);
-    const entry = await prisma.moneyEntry.create({
-      data: {
-        amountCents: toCents(amount),
-        category,
-        note,
-        spentAt: parseSpentAt(spentAt),
-        userId: user.id,
-      },
+    const normalizedCategory = normalizeCategory(category);
+    const normalizedCurrency = normalizeCurrency(currency);
+    const entry = await prisma.$transaction(async (transaction) => {
+      await transaction.category.upsert({
+        where: {
+          userId_name: {
+            userId: user.id,
+            name: normalizedCategory,
+          },
+        },
+        update: {},
+        create: {
+          userId: user.id,
+          name: normalizedCategory,
+        },
+      });
+
+      return transaction.moneyEntry.create({
+        data: {
+          amountCents: toCents(amount),
+          category: normalizedCategory,
+          currency: normalizedCurrency,
+          note,
+          spentAt: parseSpentAt(spentAt),
+          userId: user.id,
+        },
+      });
     });
 
     return serializeMoneyEntry(entry);
+  },
+
+  createCategory: async ({ name }, context) => {
+    const user = requireAuth(context);
+    const category = normalizeCategory(name);
+
+    await upsertCategory(user.id, category);
+
+    return category;
   },
 
   deleteMoneyEntry: async ({ id }, context) => {

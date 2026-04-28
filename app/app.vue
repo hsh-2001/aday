@@ -31,15 +31,20 @@
         <SummaryBand
           v-model:selected-date="selectedDate"
           :entry-count="dailyUsage?.entries.length || 0"
-          :total="dailyUsage?.total || 0"
+          :totals="dailyUsage?.totals || []"
           @refresh="loadDailyUsage"
         />
 
         <section class="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]">
           <EntryForm
+            v-model:category-name="categoryName"
             v-model:form="entryForm"
+            :categories="categories"
+            :category-loading="isCategoryLoading"
+            :currencies="currencyOptions"
             :error="errorMessage"
             :loading="isEntryLoading"
+            @add-category="createCategory"
             @submit="createEntry"
           />
 
@@ -60,14 +65,19 @@
 const {
   authForm,
   authMode,
+  categories,
+  categoryName,
+  currencyOptions,
   dailyUsage,
   entryForm,
   errorMessage,
   isAuthLoading,
+  isCategoryLoading,
   isDailyLoading,
   isEntryLoading,
   selectedDate,
   user,
+  createCategory,
   createEntry,
   deleteEntry,
   initializeSession,

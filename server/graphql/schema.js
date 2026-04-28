@@ -14,14 +14,21 @@ export const typeDefs = `#graphql
     id: ID!
     amount: Float!
     category: String!
+    currency: String!
     note: String
     spentAt: String!
     createdAt: String!
   }
 
+  type CurrencyTotal {
+    currency: String!
+    total: Float!
+  }
+
   type DailyUsage {
     date: String!
     total: Float!
+    totals: [CurrencyTotal!]!
     entries: [MoneyEntry!]!
   }
 
@@ -30,6 +37,7 @@ export const typeDefs = `#graphql
     users: [User!]!
     user(id: ID!): User
     userByName(username: String!): User
+    categories: [String!]!
     moneyEntries(date: String): [MoneyEntry!]!
     dailyUsage(date: String): DailyUsage!
   }
@@ -41,9 +49,11 @@ export const typeDefs = `#graphql
     createMoneyEntry(
       amount: Float!
       category: String!
+      currency: String
       note: String
       spentAt: String
     ): MoneyEntry!
+    createCategory(name: String!): String!
     deleteMoneyEntry(id: ID!): Boolean!
   }
 `;

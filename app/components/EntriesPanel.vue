@@ -22,7 +22,7 @@
             <p v-if="entry.note" class="mt-2 text-sm leading-6 text-base-content/70">{{ entry.note }}</p>
           </div>
           <div class="flex shrink-0 items-center justify-between gap-3 sm:flex-col sm:items-end">
-            <strong class="text-lg font-black text-primary">{{ formatCurrency(entry.amount) }}</strong>
+            <strong class="text-lg font-black text-primary">{{ formatCurrency(entry.amount, entry.currency) }}</strong>
             <button type="button" class="btn btn-error btn-outline btn-xs" @click="$emit('delete', entry.id)">Delete</button>
           </div>
         </div>

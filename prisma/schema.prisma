@@ -11,15 +11,28 @@ model User {
   username     String       @unique
   password     String
   createdAt    DateTime     @default(now())
+  categories   Category[]
   moneyEntries MoneyEntry[]
 
   @@map("users")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@map("categories")
 }
 
 model MoneyEntry {
   id          String   @id @default(cuid())
   amountCents Int
   category    String
+  currency    String   @default("USD")
   note        String?
   spentAt     DateTime @default(now())
   createdAt   DateTime @default(now())

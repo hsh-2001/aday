@@ -6,10 +6,10 @@ export const toDateInputValue = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
-export const formatCurrency = (amount: number) => {
+export const formatCurrency = (amount: number, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
   }).format(amount)
 }
 

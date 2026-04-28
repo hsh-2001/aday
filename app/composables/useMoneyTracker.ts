@@ -1,7 +1,15 @@
-import type { AuthForm, AuthMode, AuthPayload, DailyUsage, EntryForm, MoneyEntry, User } from '../types/api'
+import type { AuthForm, AuthMode, AuthPayload, CurrencyOption, DailyUsage, EntryForm, MoneyEntry, User } from '../types/api'
 import { toDateInputValue } from '../utils/formatters'
 
 const AUTH_TOKEN_KEY = 'aday_auth_token'
+const CURRENCY_OPTIONS: CurrencyOption[] = [
+  { code: 'USD', label: 'USD - US Dollar' },
+  { code: 'KHR', label: 'KHR - Cambodian Riel' },
+  { code: 'THB', label: 'THB - Thai Baht' },
+  { code: 'EUR', label: 'EUR - Euro' },
+  { code: 'JPY', label: 'JPY - Japanese Yen' },
+  { code: 'CNY', label: 'CNY - Chinese Yuan' },
+]
 
 export const useMoneyTracker = () => {
   const { execute, token } = useGraphql()
@@ -15,13 +23,17 @@ export const useMoneyTracker = () => {
   const entryForm = reactive<EntryForm>({
     amount: null,
     category: '',
+    currency: 'USD',
     note: '',
     spentAt: '',
   })
+  const categoryName = ref('')
+  const categories = ref<string[]>([])
   const selectedDate = ref(toDateInputValue(new Date()))
   const dailyUsage = ref<DailyUsage | null>(null)
   const errorMessage = ref('')
   const isAuthLoading = ref(false)
+  const isCategoryLoading = ref(false)
   const isDailyLoading = ref(false)
   const isEntryLoading = ref(false)
 
@@ -34,6 +46,20 @@ export const useMoneyTracker = () => {
     entryForm.category = ''
     entryForm.note = ''
     entryForm.spentAt = ''
+  }
+
+  const loadCategories = async () => {
+    if (!user.value) {
+      return
+    }
+
+    const data = await execute<{ categories: string[] }>(`
+      query Categories {
+        categories
+      }
+    `)
+
+    categories.value = data.categories
   }
 
   const submitAuth = async () => {
@@ -65,6 +91,7 @@ export const useMoneyTracker = () => {
       user.value = payload.user
       localStorage.setItem(AUTH_TOKEN_KEY, payload.token)
       authForm.password = ''
+      await loadCategories()
       await loadDailyUsage()
     } catch (error) {
       setError(error)
@@ -96,6 +123,7 @@ export const useMoneyTracker = () => {
 
       user.value = data.me
       if (data.me) {
+        await loadCategories()
         await loadDailyUsage()
       }
     } catch {
@@ -117,10 +145,15 @@ export const useMoneyTracker = () => {
           dailyUsage(date: $date) {
             date
             total
+            totals {
+              currency
+              total
+            }
             entries {
               id
               amount
               category
+              currency
               note
               spentAt
               createdAt
@@ -148,24 +181,54 @@ export const useMoneyTracker = () => {
 
     try {
       await execute<{ createMoneyEntry: MoneyEntry }>(`
-        mutation CreateMoneyEntry($amount: Float!, $category: String!, $note: String, $spentAt: String) {
-          createMoneyEntry(amount: $amount, category: $category, note: $note, spentAt: $spentAt) {
+        mutation CreateMoneyEntry($amount: Float!, $category: String!, $currency: String, $note: String, $spentAt: String) {
+          createMoneyEntry(amount: $amount, category: $category, currency: $currency, note: $note, spentAt: $spentAt) {
             id
           }
         }
       `, {
         amount: entryForm.amount,
         category: entryForm.category,
+        currency: entryForm.currency,
         note: entryForm.note || null,
         spentAt: entryForm.spentAt ? new Date(entryForm.spentAt).toISOString() : null,
       })
 
       resetEntryForm()
+      await loadCategories()
       await loadDailyUsage()
     } catch (error) {
       setError(error)
     } finally {
       isEntryLoading.value = false
+    }
+  }
+
+  const createCategory = async () => {
+    const name = categoryName.value.trim()
+
+    if (!name) {
+      errorMessage.value = 'Category name is required.'
+      return
+    }
+
+    errorMessage.value = ''
+    isCategoryLoading.value = true
+
+    try {
+      const data = await execute<{ createCategory: string }>(`
+        mutation CreateCategory($name: String!) {
+          createCategory(name: $name)
+        }
+      `, { name })
+
+      entryForm.category = data.createCategory
+      categoryName.value = ''
+      await loadCategories()
+    } catch (error) {
+      setError(error)
+    } finally {
+      isCategoryLoading.value = false
     }
   }
 
@@ -187,6 +250,7 @@ export const useMoneyTracker = () => {
   const logout = () => {
     token.value = null
     user.value = null
+    categories.value = []
     dailyUsage.value = null
 
     if (import.meta.client) {
@@ -206,14 +270,19 @@ export const useMoneyTracker = () => {
   return {
     authForm,
     authMode,
+    categories,
+    categoryName,
+    currencyOptions: CURRENCY_OPTIONS,
     dailyUsage,
     entryForm,
     errorMessage,
     isAuthLoading,
+    isCategoryLoading,
     isDailyLoading,
     isEntryLoading,
     selectedDate,
     user,
+    createCategory,
     createEntry,
     deleteEntry,
     initializeSession,
