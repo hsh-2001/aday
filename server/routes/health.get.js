@@ -2,7 +2,7 @@ import { getPrisma } from "../utils/prisma.js";
 
 export default defineEventHandler(async () => {
   try {
-    const prisma = getPrisma();
+    const prisma = await getPrisma();
 
     await prisma.$queryRaw`SELECT 1`;
 

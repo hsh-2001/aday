@@ -7,12 +7,10 @@ import 'node:buffer';
 import 'node:fs';
 import 'node:path';
 import 'node:crypto';
-import '@prisma/client';
-import '@prisma/adapter-pg';
 
 const health_get = defineEventHandler(async () => {
   try {
-    const prisma = getPrisma();
+    const prisma = await getPrisma();
     await prisma.$queryRaw`SELECT 1`;
     return {
       ok: true,

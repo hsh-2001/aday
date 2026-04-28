@@ -74,8 +74,10 @@ const totalEntriesByCurrency = (entries) => {
     }));
 };
 
-const upsertCategory = (userId, category) => {
-  return getPrisma().category.upsert({
+const upsertCategory = async (userId, category) => {
+  const prisma = await getPrisma();
+
+  return prisma.category.upsert({
     where: {
       userId_name: {
         userId,
@@ -112,7 +114,8 @@ const validateUserInput = (username, password) => {
 const createUser = async (username, password) => {
   validateUserInput(username, password);
 
-  const existingUser = await getPrisma().user.findUnique({
+  const prisma = await getPrisma();
+  const existingUser = await prisma.user.findUnique({
     where: { username },
   });
 
@@ -122,7 +125,7 @@ const createUser = async (username, password) => {
     });
   }
 
-  return getPrisma().user.create({
+  return prisma.user.create({
     data: {
       username,
       password: await hashPassword(password),
@@ -133,7 +136,8 @@ const createUser = async (username, password) => {
 export const rootValue = {
   me: async (_args, context) => {
     const user = requireAuth(context);
-    const foundUser = await getPrisma().user.findUnique({
+    const prisma = await getPrisma();
+    const foundUser = await prisma.user.findUnique({
       where: { id: user.id },
     });
 
@@ -142,7 +146,8 @@ export const rootValue = {
 
   users: async (_args, context) => {
     requireAuth(context);
-    const users = await getPrisma().user.findMany({
+    const prisma = await getPrisma();
+    const users = await prisma.user.findMany({
       orderBy: { username: "asc" },
     });
 
@@ -151,7 +156,8 @@ export const rootValue = {
 
   user: async ({ id }, context) => {
     requireAuth(context);
-    const user = await getPrisma().user.findUnique({
+    const prisma = await getPrisma();
+    const user = await prisma.user.findUnique({
       where: { id },
     });
 
@@ -160,7 +166,8 @@ export const rootValue = {
 
   userByName: async ({ username }, context) => {
     requireAuth(context);
-    const user = await getPrisma().user.findFirst({
+    const prisma = await getPrisma();
+    const user = await prisma.user.findFirst({
       where: { username },
     });
 
@@ -169,7 +176,8 @@ export const rootValue = {
 
   categories: async (_args, context) => {
     const user = requireAuth(context);
-    const categories = await getPrisma().category.findMany({
+    const prisma = await getPrisma();
+    const categories = await prisma.category.findMany({
       where: { userId: user.id },
       orderBy: { name: "asc" },
     });
@@ -185,7 +193,8 @@ export const rootValue = {
   moneyEntries: async ({ date, timezoneOffset }, context) => {
     const user = requireAuth(context);
     const range = date ? getDayRange(date, timezoneOffset) : null;
-    const entries = await getPrisma().moneyEntry.findMany({
+    const prisma = await getPrisma();
+    const entries = await prisma.moneyEntry.findMany({
       where: {
         userId: user.id,
         ...(range
@@ -206,7 +215,8 @@ export const rootValue = {
   dailyUsage: async ({ date, timezoneOffset }, context) => {
     const user = requireAuth(context);
     const range = getDayRange(date, timezoneOffset);
-    const entries = await getPrisma().moneyEntry.findMany({
+    const prisma = await getPrisma();
+    const entries = await prisma.moneyEntry.findMany({
       where: {
         userId: user.id,
         spentAt: {
@@ -235,7 +245,8 @@ export const rootValue = {
   },
 
   login: async ({ username, password }) => {
-    const user = await getPrisma().user.findUnique({
+    const prisma = await getPrisma();
+    const user = await prisma.user.findUnique({
       where: { username },
     });
 
@@ -255,7 +266,7 @@ export const rootValue = {
     }
 
     if (password === user.password) {
-      await getPrisma().user.update({
+      await prisma.user.update({
         where: { id: user.id },
         data: { password: await hashPassword(password) },
       });
@@ -274,7 +285,8 @@ export const rootValue = {
     const user = requireAuth(context);
     const normalizedCategory = normalizeCategory(category);
     const normalizedCurrency = normalizeCurrency(currency);
-    const entry = await getPrisma().$transaction(async (transaction) => {
+    const prisma = await getPrisma();
+    const entry = await prisma.$transaction(async (transaction) => {
       await transaction.category.upsert({
         where: {
           userId_name: {
@@ -315,7 +327,8 @@ export const rootValue = {
 
   deleteMoneyEntry: async ({ id }, context) => {
     const user = requireAuth(context);
-    const result = await getPrisma().moneyEntry.deleteMany({
+    const prisma = await getPrisma();
+    const result = await prisma.moneyEntry.deleteMany({
       where: {
         id,
         userId: user.id,

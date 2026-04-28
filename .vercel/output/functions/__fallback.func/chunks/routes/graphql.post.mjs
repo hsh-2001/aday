@@ -10,8 +10,6 @@ import 'node:buffer';
 import 'node:fs';
 import 'node:path';
 import 'node:crypto';
-import '@prisma/client';
-import '@prisma/adapter-pg';
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-only-change-me";
 const JWT_EXPIRES_IN = "7d";
@@ -155,8 +153,9 @@ const totalEntriesByCurrency = (entries) => {
     total: totalCents / 100
   }));
 };
-const upsertCategory = (userId, category) => {
-  return getPrisma().category.upsert({
+const upsertCategory = async (userId, category) => {
+  const prisma = await getPrisma();
+  return prisma.category.upsert({
     where: {
       userId_name: {
         userId,
@@ -188,7 +187,8 @@ const validateUserInput = (username, password) => {
 };
 const createUser = async (username, password) => {
   validateUserInput(username, password);
-  const existingUser = await getPrisma().user.findUnique({
+  const prisma = await getPrisma();
+  const existingUser = await prisma.user.findUnique({
     where: { username }
   });
   if (existingUser) {
@@ -196,7 +196,7 @@ const createUser = async (username, password) => {
       extensions: { code: "BAD_USER_INPUT" }
     });
   }
-  return getPrisma().user.create({
+  return prisma.user.create({
     data: {
       username,
       password: await hashPassword(password)
@@ -206,35 +206,40 @@ const createUser = async (username, password) => {
 const rootValue = {
   me: async (_args, context) => {
     const user = requireAuth(context);
-    const foundUser = await getPrisma().user.findUnique({
+    const prisma = await getPrisma();
+    const foundUser = await prisma.user.findUnique({
       where: { id: user.id }
     });
     return serializeUser(foundUser);
   },
   users: async (_args, context) => {
     requireAuth(context);
-    const users = await getPrisma().user.findMany({
+    const prisma = await getPrisma();
+    const users = await prisma.user.findMany({
       orderBy: { username: "asc" }
     });
     return users.map(serializeUser);
   },
   user: async ({ id }, context) => {
     requireAuth(context);
-    const user = await getPrisma().user.findUnique({
+    const prisma = await getPrisma();
+    const user = await prisma.user.findUnique({
       where: { id }
     });
     return serializeUser(user);
   },
   userByName: async ({ username }, context) => {
     requireAuth(context);
-    const user = await getPrisma().user.findFirst({
+    const prisma = await getPrisma();
+    const user = await prisma.user.findFirst({
       where: { username }
     });
     return serializeUser(user);
   },
   categories: async (_args, context) => {
     const user = requireAuth(context);
-    const categories = await getPrisma().category.findMany({
+    const prisma = await getPrisma();
+    const categories = await prisma.category.findMany({
       where: { userId: user.id },
       orderBy: { name: "asc" }
     });
@@ -247,7 +252,8 @@ const rootValue = {
   moneyEntries: async ({ date, timezoneOffset }, context) => {
     const user = requireAuth(context);
     const range = date ? getDayRange(date, timezoneOffset) : null;
-    const entries = await getPrisma().moneyEntry.findMany({
+    const prisma = await getPrisma();
+    const entries = await prisma.moneyEntry.findMany({
       where: {
         userId: user.id,
         ...range ? {
@@ -264,7 +270,8 @@ const rootValue = {
   dailyUsage: async ({ date, timezoneOffset }, context) => {
     const user = requireAuth(context);
     const range = getDayRange(date, timezoneOffset);
-    const entries = await getPrisma().moneyEntry.findMany({
+    const prisma = await getPrisma();
+    const entries = await prisma.moneyEntry.findMany({
       where: {
         userId: user.id,
         spentAt: {
@@ -289,7 +296,8 @@ const rootValue = {
     return createAuthPayload(user);
   },
   login: async ({ username, password }) => {
-    const user = await getPrisma().user.findUnique({
+    const prisma = await getPrisma();
+    const user = await prisma.user.findUnique({
       where: { username }
     });
     if (!user) {
@@ -304,7 +312,7 @@ const rootValue = {
       });
     }
     if (password === user.password) {
-      await getPrisma().user.update({
+      await prisma.user.update({
         where: { id: user.id },
         data: { password: await hashPassword(password) }
       });
@@ -319,7 +327,8 @@ const rootValue = {
     const user = requireAuth(context);
     const normalizedCategory = normalizeCategory(category);
     const normalizedCurrency = normalizeCurrency(currency);
-    const entry = await getPrisma().$transaction(async (transaction) => {
+    const prisma = await getPrisma();
+    const entry = await prisma.$transaction(async (transaction) => {
       await transaction.category.upsert({
         where: {
           userId_name: {
@@ -354,7 +363,8 @@ const rootValue = {
   },
   deleteMoneyEntry: async ({ id }, context) => {
     const user = requireAuth(context);
-    const result = await getPrisma().moneyEntry.deleteMany({
+    const prisma = await getPrisma();
+    const result = await prisma.moneyEntry.deleteMany({
       where: {
         id,
         userId: user.id
