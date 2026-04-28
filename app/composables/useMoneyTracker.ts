@@ -53,13 +53,18 @@ export const useMoneyTracker = () => {
       return
     }
 
-    const data = await execute<{ categories: string[] }>(`
-      query Categories {
-        categories
-      }
-    `)
+    try {
+      const data = await execute<{ categories: string[] }>(`
+        query Categories {
+          categories
+        }
+      `)
 
-    categories.value = data.categories
+      categories.value = data.categories
+    } catch (error) {
+      setError(error)
+      categories.value = ['Food', 'Transport', 'Coffee', 'Shopping', 'Bills']
+    }
   }
 
   const submitAuth = async () => {

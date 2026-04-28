@@ -73,3 +73,20 @@ bun run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+## Vercel Deployment
+
+Set these environment variables in Vercel for Production, Preview, and Development:
+
+```bash
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+JWT_SECRET="use-a-long-random-secret"
+```
+
+After adding new Prisma migrations, apply them to the production database:
+
+```bash
+npm run prisma:migrate:deploy
+```
+
+If the app logs in but does not show entries, check the browser Network tab for `/graphql` errors. The most common cause is that Vercel is using a database where the latest migrations have not been applied.
