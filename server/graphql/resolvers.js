@@ -182,9 +182,9 @@ export const rootValue = {
     return Array.from(categoryNames);
   },
 
-  moneyEntries: async ({ date }, context) => {
+  moneyEntries: async ({ date, timezoneOffset }, context) => {
     const user = requireAuth(context);
-    const range = date ? getDayRange(date) : null;
+    const range = date ? getDayRange(date, timezoneOffset) : null;
     const entries = await prisma.moneyEntry.findMany({
       where: {
         userId: user.id,
@@ -203,9 +203,9 @@ export const rootValue = {
     return entries.map(serializeMoneyEntry);
   },
 
-  dailyUsage: async ({ date }, context) => {
+  dailyUsage: async ({ date, timezoneOffset }, context) => {
     const user = requireAuth(context);
-    const range = getDayRange(date);
+    const range = getDayRange(date, timezoneOffset);
     const entries = await prisma.moneyEntry.findMany({
       where: {
         userId: user.id,

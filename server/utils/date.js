@@ -8,16 +8,22 @@ export const toDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-export const getDayRange = (dateString) => {
+export const getDayRange = (dateString, timezoneOffset = 0) => {
   const normalizedDateString = dateString || toDateString();
 
   if (!DATE_PATTERN.test(normalizedDateString)) {
     throw new Error("Date must use YYYY-MM-DD format.");
   }
 
-  const start = new Date(`${normalizedDateString}T00:00:00.000`);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  const normalizedTimezoneOffset = Number(timezoneOffset);
+
+  if (!Number.isFinite(normalizedTimezoneOffset)) {
+    throw new Error("Timezone offset must be a number.");
+  }
+
+  const [year, month, day] = normalizedDateString.split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day) + normalizedTimezoneOffset * 60 * 1000);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
 
   return {
     date: normalizedDateString,

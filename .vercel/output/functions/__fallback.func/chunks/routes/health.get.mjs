@@ -1,0 +1,35 @@
+import { d as defineEventHandler } from '../nitro/nitro.mjs';
+import { p as prisma } from '../_/prisma.mjs';
+import 'node:http';
+import 'node:https';
+import 'node:events';
+import 'node:buffer';
+import 'node:fs';
+import 'node:path';
+import 'node:crypto';
+import '@prisma/client';
+import '@prisma/adapter-pg';
+
+const health_get = defineEventHandler(async () => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return {
+      ok: true,
+      database: "connected",
+      hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+      nodeEnv: "production"
+    };
+  } catch (error) {
+    console.error("Health check failed:", error);
+    return {
+      ok: false,
+      database: "failed",
+      hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+      message: error instanceof Error ? error.message : "Database check failed.",
+      nodeEnv: "production"
+    };
+  }
+});
+
+export { health_get as default };
+//# sourceMappingURL=health.get.mjs.map

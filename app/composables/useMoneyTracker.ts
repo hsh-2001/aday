@@ -48,6 +48,14 @@ export const useMoneyTracker = () => {
     entryForm.spentAt = ''
   }
 
+  const getTimezoneOffset = () => {
+    if (!import.meta.client) {
+      return 0
+    }
+
+    return new Date().getTimezoneOffset()
+  }
+
   const loadCategories = async () => {
     if (!user.value) {
       return
@@ -146,8 +154,8 @@ export const useMoneyTracker = () => {
 
     try {
       const data = await execute<{ dailyUsage: DailyUsage }>(`
-        query DailyUsage($date: String) {
-          dailyUsage(date: $date) {
+        query DailyUsage($date: String, $timezoneOffset: Int) {
+          dailyUsage(date: $date, timezoneOffset: $timezoneOffset) {
             date
             total
             totals {
@@ -165,7 +173,10 @@ export const useMoneyTracker = () => {
             }
           }
         }
-      `, { date: selectedDate.value })
+      `, {
+        date: selectedDate.value,
+        timezoneOffset: getTimezoneOffset(),
+      })
 
       dailyUsage.value = data.dailyUsage
     } catch (error) {

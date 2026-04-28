@@ -90,3 +90,19 @@ npm run prisma:migrate:deploy
 ```
 
 If the app logs in but does not show entries, check the browser Network tab for `/graphql` errors. The most common cause is that Vercel is using a database where the latest migrations have not been applied.
+
+You can also open this route after deployment:
+
+```bash
+https://your-vercel-domain.vercel.app/health
+```
+
+Expected response:
+
+```json
+{
+  "ok": true,
+  "database": "connected",
+  "hasDatabaseUrl": true
+}
+```

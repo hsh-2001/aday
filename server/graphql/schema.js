@@ -38,8 +38,8 @@ export const typeDefs = `#graphql
     user(id: ID!): User
     userByName(username: String!): User
     categories: [String!]!
-    moneyEntries(date: String): [MoneyEntry!]!
-    dailyUsage(date: String): DailyUsage!
+    moneyEntries(date: String, timezoneOffset: Int): [MoneyEntry!]!
+    dailyUsage(date: String, timezoneOffset: Int): DailyUsage!
   }
 
   type Mutation {

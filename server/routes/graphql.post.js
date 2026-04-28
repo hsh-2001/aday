@@ -7,17 +7,40 @@ import { getUserFromAuthorization } from "../utils/auth.js";
 const schema = buildSchema(typeDefs);
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
-  const result = await graphql({
-    schema,
-    source: body?.query,
-    rootValue,
-    contextValue: {
-      user: getUserFromAuthorization(getHeader(event, "authorization")),
-    },
-    variableValues: body?.variables,
-    operationName: body?.operationName,
-  });
+  try {
+    const body = await readBody(event);
+    const result = await graphql({
+      schema,
+      source: body?.query,
+      rootValue,
+      contextValue: {
+        user: getUserFromAuthorization(getHeader(event, "authorization")),
+      },
+      variableValues: body?.variables,
+      operationName: body?.operationName,
+    });
 
-  return result;
+    if (result.errors?.length) {
+      console.error(
+        "GraphQL errors:",
+        result.errors.map((error) => ({
+          message: error.message,
+          path: error.path,
+          originalError: error.originalError?.message,
+        })),
+      );
+    }
+
+    return result;
+  } catch (error) {
+    console.error("GraphQL route failed:", error);
+
+    return {
+      errors: [
+        {
+          message: error instanceof Error ? error.message : "GraphQL route failed.",
+        },
+      ],
+    };
+  }
 });
