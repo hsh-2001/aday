@@ -25,18 +25,6 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
-    alias: {
-      'pg-native': new URL('./server/stubs/pg-native.cjs', import.meta.url).pathname,
-    },
-    cloudflare: {
-      deployConfig: true,
-      nodeCompat: false,
-    },
-    experimental: {
-      wasm: true,
-    },
-    prerender: {
-      autoSubfolderIndex: false
-    }
+    preset: 'node-server'
   }
 })
