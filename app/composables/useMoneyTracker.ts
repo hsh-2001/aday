@@ -189,7 +189,7 @@ export const useMoneyTracker = () => {
   const createEntry = async () => {
     if (!entryForm.amount) {
       errorMessage.value = 'Amount is required.'
-      return
+      return false
     }
 
     errorMessage.value = ''
@@ -213,8 +213,10 @@ export const useMoneyTracker = () => {
       resetEntryForm()
       await loadCategories()
       await loadDailyUsage()
+      return true
     } catch (error) {
       setError(error)
+      return false
     } finally {
       isEntryLoading.value = false
     }
@@ -258,8 +260,10 @@ export const useMoneyTracker = () => {
         }
       `, { id })
       await loadDailyUsage()
+      return true
     } catch (error) {
       setError(error)
+      return false
     }
   }
 

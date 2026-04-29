@@ -9,6 +9,12 @@ export default defineNuxtConfig({
     preset: 'vercel',
   },
   vite: {
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+      ],
+    },
     plugins: [
       tailwindcss(),
     ],
