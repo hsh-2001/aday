@@ -1,11 +1,9 @@
-import { getPrisma } from "../utils/prisma.js";
+import { pingDatabase } from "../utils/db.js";
 import { getServerEnvValue, hasServerEnvValue } from "../utils/env.js";
 
 export default defineEventHandler(async () => {
   try {
-    const prisma = await getPrisma();
-
-    await prisma.$queryRaw`SELECT 1`;
+    await pingDatabase();
 
     return {
       ok: true,

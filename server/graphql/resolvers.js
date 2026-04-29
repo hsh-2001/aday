@@ -1,10 +1,25 @@
 import { GraphQLError } from "graphql";
 import { createToken, hashPassword, requireAuth, verifyPassword } from "../utils/auth.js";
+import {
+  createMoneyEntryRecord,
+  createUserRecord,
+  deleteMoneyEntryRecord,
+  findUserById,
+  findUserByUsername,
+  listCategories,
+  listMoneyEntries,
+  listUsers,
+  updateUserPassword,
+  upsertCategoryRecord,
+} from "../utils/db.js";
 import { getDayRange, parseSpentAt, toCents } from "../utils/date.js";
-import { getPrisma } from "../utils/prisma.js";
 
 const DEFAULT_CATEGORIES = ["Food", "Transport", "Coffee", "Shopping", "Bills"];
 const SUPPORTED_CURRENCIES = new Set(["USD", "KHR", "THB", "EUR", "JPY", "CNY"]);
+
+const serializeDate = (value) => {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+};
 
 const serializeUser = (user) => {
   if (!user) {
@@ -14,7 +29,7 @@ const serializeUser = (user) => {
   return {
     id: user.id,
     username: user.username,
-    createdAt: user.createdAt.toISOString(),
+    createdAt: serializeDate(user.createdAt),
   };
 };
 
@@ -24,8 +39,8 @@ const serializeMoneyEntry = (entry) => ({
   category: entry.category,
   currency: entry.currency || "USD",
   note: entry.note,
-  spentAt: entry.spentAt.toISOString(),
-  createdAt: entry.createdAt.toISOString(),
+  spentAt: serializeDate(entry.spentAt),
+  createdAt: serializeDate(entry.createdAt),
 });
 
 const normalizeCategory = (category) => {
@@ -75,21 +90,7 @@ const totalEntriesByCurrency = (entries) => {
 };
 
 const upsertCategory = async (userId, category) => {
-  const prisma = await getPrisma();
-
-  return prisma.category.upsert({
-    where: {
-      userId_name: {
-        userId,
-        name: category,
-      },
-    },
-    update: {},
-    create: {
-      userId,
-      name: category,
-    },
-  });
+  return await upsertCategoryRecord({ userId, name: category });
 };
 
 const createAuthPayload = async (user) => ({
@@ -114,10 +115,7 @@ const validateUserInput = (username, password) => {
 const createUser = async (username, password) => {
   validateUserInput(username, password);
 
-  const prisma = await getPrisma();
-  const existingUser = await prisma.user.findUnique({
-    where: { username },
-  });
+  const existingUser = await findUserByUsername(username);
 
   if (existingUser) {
     throw new GraphQLError("Username is already taken.", {
@@ -125,62 +123,44 @@ const createUser = async (username, password) => {
     });
   }
 
-  return prisma.user.create({
-    data: {
-      username,
-      password: await hashPassword(password),
-    },
+  return await createUserRecord({
+    username,
+    password: await hashPassword(password),
   });
 };
 
 export const rootValue = {
   me: async (_args, context) => {
     const user = requireAuth(context);
-    const prisma = await getPrisma();
-    const foundUser = await prisma.user.findUnique({
-      where: { id: user.id },
-    });
+    const foundUser = await findUserById(user.id);
 
     return serializeUser(foundUser);
   },
 
   users: async (_args, context) => {
     requireAuth(context);
-    const prisma = await getPrisma();
-    const users = await prisma.user.findMany({
-      orderBy: { username: "asc" },
-    });
+    const users = await listUsers();
 
     return users.map(serializeUser);
   },
 
   user: async ({ id }, context) => {
     requireAuth(context);
-    const prisma = await getPrisma();
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
+    const user = await findUserById(id);
 
     return serializeUser(user);
   },
 
   userByName: async ({ username }, context) => {
     requireAuth(context);
-    const prisma = await getPrisma();
-    const user = await prisma.user.findFirst({
-      where: { username },
-    });
+    const user = await findUserByUsername(username);
 
     return serializeUser(user);
   },
 
   categories: async (_args, context) => {
     const user = requireAuth(context);
-    const prisma = await getPrisma();
-    const categories = await prisma.category.findMany({
-      where: { userId: user.id },
-      orderBy: { name: "asc" },
-    });
+    const categories = await listCategories(user.id);
     const categoryNames = new Set(DEFAULT_CATEGORIES);
 
     categories.forEach((category) => {
@@ -193,21 +173,7 @@ export const rootValue = {
   moneyEntries: async ({ date, timezoneOffset }, context) => {
     const user = requireAuth(context);
     const range = date ? getDayRange(date, timezoneOffset) : null;
-    const prisma = await getPrisma();
-    const entries = await prisma.moneyEntry.findMany({
-      where: {
-        userId: user.id,
-        ...(range
-          ? {
-              spentAt: {
-                gte: range.start,
-                lt: range.end,
-              },
-            }
-          : {}),
-      },
-      orderBy: { spentAt: "desc" },
-    });
+    const entries = await listMoneyEntries({ userId: user.id, range });
 
     return entries.map(serializeMoneyEntry);
   },
@@ -215,17 +181,7 @@ export const rootValue = {
   dailyUsage: async ({ date, timezoneOffset }, context) => {
     const user = requireAuth(context);
     const range = getDayRange(date, timezoneOffset);
-    const prisma = await getPrisma();
-    const entries = await prisma.moneyEntry.findMany({
-      where: {
-        userId: user.id,
-        spentAt: {
-          gte: range.start,
-          lt: range.end,
-        },
-      },
-      orderBy: { spentAt: "desc" },
-    });
+    const entries = await listMoneyEntries({ userId: user.id, range });
     const totalCents = entries.reduce((total, entry) => {
       return total + entry.amountCents;
     }, 0);
@@ -245,10 +201,7 @@ export const rootValue = {
   },
 
   login: async ({ username, password }) => {
-    const prisma = await getPrisma();
-    const user = await prisma.user.findUnique({
-      where: { username },
-    });
+    const user = await findUserByUsername(username);
 
     if (!user) {
       throw new GraphQLError("Invalid username or password.", {
@@ -266,9 +219,9 @@ export const rootValue = {
     }
 
     if (password === user.password) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { password: await hashPassword(password) },
+      await updateUserPassword({
+        id: user.id,
+        password: await hashPassword(password),
       });
     }
 
@@ -285,32 +238,13 @@ export const rootValue = {
     const user = requireAuth(context);
     const normalizedCategory = normalizeCategory(category);
     const normalizedCurrency = normalizeCurrency(currency);
-    const prisma = await getPrisma();
-    const entry = await prisma.$transaction(async (transaction) => {
-      await transaction.category.upsert({
-        where: {
-          userId_name: {
-            userId: user.id,
-            name: normalizedCategory,
-          },
-        },
-        update: {},
-        create: {
-          userId: user.id,
-          name: normalizedCategory,
-        },
-      });
-
-      return transaction.moneyEntry.create({
-        data: {
-          amountCents: toCents(amount),
-          category: normalizedCategory,
-          currency: normalizedCurrency,
-          note,
-          spentAt: parseSpentAt(spentAt),
-          userId: user.id,
-        },
-      });
+    const entry = await createMoneyEntryRecord({
+      userId: user.id,
+      amountCents: toCents(amount),
+      category: normalizedCategory,
+      currency: normalizedCurrency,
+      note,
+      spentAt: parseSpentAt(spentAt),
     });
 
     return serializeMoneyEntry(entry);
@@ -327,13 +261,7 @@ export const rootValue = {
 
   deleteMoneyEntry: async ({ id }, context) => {
     const user = requireAuth(context);
-    const prisma = await getPrisma();
-    const result = await prisma.moneyEntry.deleteMany({
-      where: {
-        id,
-        userId: user.id,
-      },
-    });
+    const result = await deleteMoneyEntryRecord({ id, userId: user.id });
 
     return result.count > 0;
   },

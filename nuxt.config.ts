@@ -1,10 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
-
-const prismaWasmWorkerLoader = fileURLToPath(
-  new URL('./server/utils/prisma-wasm-loader.mjs', import.meta.url)
-)
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -28,8 +23,5 @@ export default defineNuxtConfig({
   },
   nitro: {
     preset: 'cloudflare-pages',
-    alias: {
-      '#wasm-compiler-loader': prismaWasmWorkerLoader,
-    },
   }
 })
