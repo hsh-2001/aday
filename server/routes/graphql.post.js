@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
       source: body?.query,
       rootValue,
       contextValue: {
-        user: getUserFromAuthorization(getHeader(event, "authorization")),
+        user: await getUserFromAuthorization(getHeader(event, "authorization")),
       },
       variableValues: body?.variables,
       operationName: body?.operationName,

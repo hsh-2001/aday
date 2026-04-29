@@ -1,4 +1,5 @@
 import { getPrisma } from "../utils/prisma.js";
+import { getServerEnvValue, hasServerEnvValue } from "../utils/env.js";
 
 export default defineEventHandler(async () => {
   try {
@@ -9,8 +10,9 @@ export default defineEventHandler(async () => {
     return {
       ok: true,
       database: "connected",
-      hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
-      nodeEnv: process.env.NODE_ENV,
+      hasDatabaseUrl: hasServerEnvValue("DATABASE_URL"),
+      hasJwtSecret: hasServerEnvValue("JWT_SECRET"),
+      nodeEnv: getServerEnvValue("NODE_ENV"),
     };
   } catch (error) {
     console.error("Health check failed:", error);
@@ -18,9 +20,10 @@ export default defineEventHandler(async () => {
     return {
       ok: false,
       database: "failed",
-      hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+      hasDatabaseUrl: hasServerEnvValue("DATABASE_URL"),
+      hasJwtSecret: hasServerEnvValue("JWT_SECRET"),
       message: error instanceof Error ? error.message : "Database check failed.",
-      nodeEnv: process.env.NODE_ENV,
+      nodeEnv: getServerEnvValue("NODE_ENV"),
     };
   }
 });

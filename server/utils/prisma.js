@@ -1,18 +1,25 @@
+import { getServerEnvValue } from "./env.js";
+
 const globalForPrisma = globalThis;
 
 const createPrismaClient = async () => {
-  if (!process.env.DATABASE_URL) {
+  const databaseUrl = getServerEnvValue("DATABASE_URL");
+
+  if (!databaseUrl) {
     throw new Error("DATABASE_URL is not configured.");
   }
 
-  const [{ PrismaClient }, { PrismaPg }] = await Promise.all([
+  const [{ PrismaClient }, { PrismaNeon }, { neonConfig }] = await Promise.all([
     import("@prisma/client"),
-    import("@prisma/adapter-pg"),
+    import("@prisma/adapter-neon"),
+    import("@neondatabase/serverless"),
   ]);
 
-  const adapter = new PrismaPg({
-    connectionString: process.env.DATABASE_URL,
-  });
+  if (typeof WebSocket !== "undefined") {
+    neonConfig.webSocketConstructor = WebSocket;
+  }
+
+  const adapter = new PrismaNeon({ connectionString: databaseUrl });
 
   return new PrismaClient({ adapter });
 };

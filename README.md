@@ -74,14 +74,16 @@ bun run preview
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
-## Vercel Deployment
+## Cloudflare Pages Deployment
 
-Set these environment variables in Vercel for Production, Preview, and Development:
+Set these environment variables in Cloudflare Pages for Production and Preview:
 
 ```bash
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require"
 JWT_SECRET="use-a-long-random-secret"
 ```
+
+Use the Neon pooled or direct connection string from the Neon dashboard. The app uses `@neondatabase/serverless` through Prisma's Neon adapter so it can run in the Cloudflare Pages runtime.
 
 After adding new Prisma migrations, apply them to the production database:
 
@@ -89,12 +91,12 @@ After adding new Prisma migrations, apply them to the production database:
 npm run prisma:migrate:deploy
 ```
 
-If the app logs in but does not show entries, check the browser Network tab for `/graphql` errors. The most common cause is that Vercel is using a database where the latest migrations have not been applied.
+If the app logs in but does not show entries, check the browser Network tab for `/graphql` errors. The most common cause is that Cloudflare is using a database where the latest migrations have not been applied.
 
 You can also open this route after deployment:
 
 ```bash
-https://your-vercel-domain.vercel.app/health
+https://your-cloudflare-pages-domain.pages.dev/health
 ```
 
 Expected response:

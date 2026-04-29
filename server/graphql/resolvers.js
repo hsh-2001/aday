@@ -92,8 +92,8 @@ const upsertCategory = async (userId, category) => {
   });
 };
 
-const createAuthPayload = (user) => ({
-  token: createToken(user),
+const createAuthPayload = async (user) => ({
+  token: await createToken(user),
   user: serializeUser(user),
 });
 
@@ -241,7 +241,7 @@ export const rootValue = {
   register: async ({ username, password }) => {
     const user = await createUser(username, password);
 
-    return createAuthPayload(user);
+    return await createAuthPayload(user);
   },
 
   login: async ({ username, password }) => {
@@ -272,7 +272,7 @@ export const rootValue = {
       });
     }
 
-    return createAuthPayload(user);
+    return await createAuthPayload(user);
   },
 
   createUser: async ({ username, password }) => {
