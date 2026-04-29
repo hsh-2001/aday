@@ -1,4 +1,3 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
@@ -18,7 +17,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      graphqlEndpoint: process.env.NUXT_PUBLIC_GRAPHQL_ENDPOINT || '/graphql'
+      graphqlEndpoint: import.meta.env.NUXT_PUBLIC_GRAPHQL_ENDPOINT || '/graphql'
     }
   },
   nitro: {

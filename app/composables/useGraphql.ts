@@ -1,8 +1,30 @@
 import type { GraphQLResponse } from '../types/api'
 
+const AUTH_TOKEN_KEY = 'aday_auth_token'
+
 export const useGraphql = () => {
   const config = useRuntimeConfig()
-  const token = useState<string | null>('auth-token', () => null)
+  const token = useState<string | null>('auth-token', () => {
+    if (!import.meta.client) {
+      return null
+    }
+
+    return localStorage.getItem(AUTH_TOKEN_KEY)
+  })
+
+  const setToken = (value: string | null) => {
+    token.value = value
+
+    if (!import.meta.client) {
+      return
+    }
+
+    if (value) {
+      localStorage.setItem(AUTH_TOKEN_KEY, value)
+    } else {
+      localStorage.removeItem(AUTH_TOKEN_KEY)
+    }
+  }
 
   const execute = async <T>(query: string, variables: Record<string, unknown> = {}) => {
     let response: GraphQLResponse<T>
@@ -37,6 +59,7 @@ export const useGraphql = () => {
 
   return {
     execute,
+    setToken,
     token,
   }
 }

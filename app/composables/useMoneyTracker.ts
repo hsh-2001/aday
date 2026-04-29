@@ -1,7 +1,6 @@
 import type { AuthForm, AuthMode, AuthPayload, CurrencyOption, DailyUsage, EntryForm, MoneyEntry, User } from '../types/api'
 import { toDateInputValue } from '../utils/formatters'
 
-const AUTH_TOKEN_KEY = 'aday_auth_token'
 const CURRENCY_OPTIONS: CurrencyOption[] = [
   { code: 'USD', label: 'USD - US Dollar' },
   { code: 'KHR', label: 'KHR - Cambodian Riel' },
@@ -12,7 +11,7 @@ const CURRENCY_OPTIONS: CurrencyOption[] = [
 ]
 
 export const useMoneyTracker = () => {
-  const { execute, token } = useGraphql()
+  const { execute, setToken, token } = useGraphql()
 
   const user = ref<User | null>(null)
   const authMode = ref<AuthMode>('login')
@@ -100,9 +99,8 @@ export const useMoneyTracker = () => {
       })
       const payload = data[mutationName]
 
-      token.value = payload.token
+      setToken(payload.token)
       user.value = payload.user
-      localStorage.setItem(AUTH_TOKEN_KEY, payload.token)
       authForm.password = ''
       await loadCategories()
       await loadDailyUsage()
@@ -268,14 +266,10 @@ export const useMoneyTracker = () => {
   }
 
   const logout = () => {
-    token.value = null
+    setToken(null)
     user.value = null
     categories.value = []
     dailyUsage.value = null
-
-    if (import.meta.client) {
-      localStorage.removeItem(AUTH_TOKEN_KEY)
-    }
   }
 
   const initializeSession = async () => {
@@ -283,7 +277,6 @@ export const useMoneyTracker = () => {
       return
     }
 
-    token.value = localStorage.getItem(AUTH_TOKEN_KEY)
     await loadMe()
   }
 

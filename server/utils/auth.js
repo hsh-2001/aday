@@ -2,7 +2,6 @@ import bcrypt from "bcryptjs";
 import { GraphQLError } from "graphql";
 import { getServerEnvValue } from "./env.js";
 
-const JWT_EXPIRES_IN_SECONDS = 7 * 24 * 60 * 60;
 const textEncoder = new TextEncoder();
 
 const getJwtSecret = () => {
@@ -70,7 +69,6 @@ export const createToken = async (user) => {
       sub: user.id,
       username: user.username,
       iat: issuedAt,
-      exp: issuedAt + JWT_EXPIRES_IN_SECONDS,
     }),
   );
   const tokenBody = `${encodedHeader}.${encodedPayload}`;
@@ -120,11 +118,6 @@ export const getUserFromAuthorization = async (authorization) => {
     }
 
     const payload = parseJsonSegment(encodedPayload);
-    const now = Math.floor(Date.now() / 1000);
-
-    if (typeof payload.exp === "number" && payload.exp < now) {
-      return null;
-    }
 
     return {
       id: payload.sub,
